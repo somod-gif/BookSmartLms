@@ -1,0 +1,113 @@
+import Link from "next/link";
+import { Session } from "next-auth";
+import { db } from "@/database/drizzle";
+import { users } from "@/database/schema";
+import { eq } from "drizzle-orm";
+import AdminDropdown from "@/components/AdminDropdown";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import MobileMenu from "@/components/MobileMenu";
+
+interface HeaderProps {
+  session: Session;
+}
+
+const Header = async ({ session }: HeaderProps) => {
+  // Fetch user data including role and profile info
+  const userData = session?.user?.id
+    ? await db
+        .select({
+          role: users.role,
+          fullName: users.fullName,
+          email: users.email,
+          universityId: users.universityId,
+          universityCard: users.universityCard,
+        })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1)
+        .then((res) => res[0])
+    : null;
+
+  const isAdmin = userData?.role === "ADMIN";
+
+  return (
+    <header className="my-6 flex justify-between sm:my-10">
+      <Link href="/" className="group flex items-center gap-2 sm:gap-3">
+        <span className="relative flex size-8 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/30 sm:size-10">
+          <img
+            src="/icons/logo.svg"
+            alt="logo"
+            width={40}
+            height={40}
+            className="size-4 sm:size-5"
+          />
+        </span>
+        <span className="flex flex-col leading-none">
+          <span className="font-bebas-neue text-lg tracking-[0.2em] text-light-100 sm:text-2xl">
+            Book <span className="text-primary">Smart</span>
+          </span>
+          <span className="mt-1 text-[9px] uppercase tracking-[0.32em] text-light-200 sm:text-[10px]">
+            Library system
+          </span>
+        </span>
+      </Link>
+
+      {/* Desktop Navigation - Hidden on mobile and sm screens */}
+      <ul className="hidden flex-row items-center gap-4 text-light-100 sm:gap-6 md:flex md:gap-8">
+        {/* <li>
+          <Link href="/">Home</Link>
+        </li> */}
+        <li className="hover:text-light-200">
+          <Link href="/all-books">All Books</Link>
+        </li>
+        <li className="hover:text-light-200">
+          <Link href="/my-profile">My Profile</Link>
+        </li>
+        {/* <li className="hover:text-light-200">
+          <Link href="/api-docs">API Docs</Link>
+        </li>
+        <li className="hover:text-light-200">
+          <Link href="/api-status">API Status</Link>
+        </li>
+        <li className="hover:text-light-200">
+          <Link href="/performance">Performance</Link>
+        </li> */}
+
+        {/* Admin-only navigation items */}
+        {isAdmin && (
+          <li>
+            <AdminDropdown />
+          </li>
+        )}
+
+        {/* Profile dropdown with user image */}
+        {userData && (
+          <li>
+            <ProfileDropdown
+              fullName={userData.fullName}
+              email={userData.email}
+              universityId={userData.universityId}
+              universityCard={userData.universityCard}
+              isAdmin={isAdmin}
+            />
+          </li>
+        )}
+      </ul>
+
+      {/* Mobile Menu - Visible only on mobile and sm screens */}
+      {userData && (
+        <div className="md:hidden">
+          <MobileMenu
+            fullName={userData.fullName}
+            email={userData.email}
+            universityId={userData.universityId}
+            universityCard={userData.universityCard}
+            isAdmin={isAdmin}
+          />
+        </div>
+      )}
+    </header>
+  );
+};
+
+export default Header;
